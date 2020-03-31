@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "aionpc"
+version = "0.1.0"
+description = ""
+authors = ["Sergey <resh.sersh@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+click = "^7.1.1"
+more_itertools = "^8.2.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.4.1"
+pylint = "^2.4.4"
+mypy = "^0.770"
+pytest-cov = "^2.8.1"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
