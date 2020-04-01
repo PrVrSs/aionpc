@@ -1,8 +1,11 @@
-from ctypes import *
+import asyncio
+from ctypes import memmove, addressof, sizeof, create_string_buffer
 from operator import itemgetter
-from typing import Optional, Tuple
+from typing import Awaitable, Callable, Optional
 
 from more_itertools.recipes import first_true
+
+from .struct import Address
 
 
 def bytes_to_structure(st, byte):
@@ -15,21 +18,33 @@ def struct_to_bytes(st):
     return buffer.raw
 
 
-def int_to_bytes(number, size, notation='big'):
+def int_to_bytes(number, size, *, notation='big'):
     return number.to_bytes(size, notation)
 
 
-def resolve_address(loop, sock_type):
+def resolve_address(
+        family: int = 0,
+        socket_type: int = 0,
+        proto: int = 0,
+        flags: int = 0
+) -> Callable[[Address], Awaitable[Optional[Address]]]:
     sock_type_getter = itemgetter(1)
     dst_address_getter = itemgetter(4)
 
-    async def inner(host: str, port: int = 1) -> Optional[Tuple[str, int]]:
-        info = first_true(
-            iterable=await loop.getaddrinfo(host=host, port=port),
-            default=None,
-            pred=lambda _: sock_type_getter(_) == sock_type,
+    async def inner(address: Address) -> Optional[Address]:
+        info_all = await asyncio.get_running_loop().getaddrinfo(
+            *address,
+            family=family,
+            proto=proto,
+            flags=flags,
         )
 
-        return info and dst_address_getter(info)
+        info = first_true(
+            iterable=info_all,
+            default=None,
+            pred=lambda _: sock_type_getter(_) == socket_type,
+        )
+
+        return info and Address(*dst_address_getter(info))
 
     return inner

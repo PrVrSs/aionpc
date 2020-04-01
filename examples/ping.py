@@ -10,7 +10,8 @@ async def main():
         ICMPProtocol.echo_request(host='ya.ru', count=3),
     ]
 
-    await asyncio.gather(*tasks, return_exceptions=True)
+    await asyncio.gather(*tasks)
+
 
 if __name__ == '__main__':
     asyncio.run(main(), debug=True)

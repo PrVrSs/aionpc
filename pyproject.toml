@@ -1,9 +1,9 @@
 [tool.poetry]
 name = "aionpc"
 version = "0.1.0"
-description = ""
-authors = ["Sergey <resh.sersh@gmail.com>"]
-license = "MIT"
+description = "Async client for network protocols that allows to manipulate packets"
+authors = ["Sergey Reshetnikov <resh.sersh@gmail.com>"]
+license = "Apache-2.0"
 
 [tool.poetry.dependencies]
 python = "^3.8"

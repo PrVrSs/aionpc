@@ -1,17 +1,11 @@
 import abc
 import asyncio
 import socket
-import uuid
 import logging
 from functools import partial
-from typing import NamedTuple
 
+from .struct import Address
 from ._packet_headers_tmp import IP, ICMP
-
-
-class Tt(NamedTuple):
-    promise: int
-    identifier: int
 
 
 class IRawConnection(metaclass=abc.ABCMeta):
@@ -26,19 +20,22 @@ class BaseRawConnection(IRawConnection):
     def _create_socket(family: int, proto: int):
         raise NotImplementedError
 
-    @staticmethod
-    def _create_id() -> int:
-        return uuid.uuid4().int & 0xFFFF
-
 
 # TODO: сделать реализацию Result<,>
-class L2Protocol(asyncio.Protocol):
-    def __init__(self, loop, pysocket, host, port, package):
+class RawProtocol(asyncio.Protocol):
+    def __init__(
+            self,
+            loop: asyncio.AbstractEventLoop,
+            pysocket: socket,
+            address: Address,
+            package_builder,
+            timeout: int,
+    ):
         self._loop = loop
         self._socket = pysocket
-        self._package_builder = package
-        self._dst_address = host, port
-        self._timeout = 2
+        self._package_builder = package_builder
+        self._dst_address = address
+        self._timeout = timeout
 
         self._promise = None
         self._transport = None
@@ -82,8 +79,16 @@ class L2Protocol(asyncio.Protocol):
         return b''
 
 
-class L2:
-    def __init__(self, host: str, port: int, family: int, proto: int, package, loop=None):
+class RawConnection:
+    def __init__(
+            self,
+            address: Address,
+            family: int,
+            proto: int,
+            package_builder,
+            *,
+            loop=None
+    ):
         self._loop = loop or asyncio.get_running_loop()
 
         self._transport = None
@@ -92,12 +97,12 @@ class L2:
         self._pipe = self._create_pipe(family, proto)
 
         protocol_factory = partial(
-            L2Protocol,
+            RawProtocol,
             loop=self._loop,
             pysocket=self._pipe,
-            host=host,
-            port=port,
-            package=package
+            address=address,
+            package_builder=package_builder,
+            timeout=2,
         )
 
         self._create_connection = partial(

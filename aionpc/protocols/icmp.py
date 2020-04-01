@@ -1,4 +1,3 @@
-import asyncio
 import socket
 import struct
 import time
@@ -6,11 +5,16 @@ import uuid
 from ctypes import c_ubyte, c_ushort, c_char
 from typing import final
 
-from ..raw_connection import L2
+from ..raw_connection import RawConnection
 from ..packet import Packet
 from ..scheme import ProtocolScheme
+from ..struct import Address
 from ..utils import resolve_address, struct_to_bytes
 from .._packet_headers_tmp import IP, ICMP
+
+
+# https://github.com/torvalds/linux/blob/master/include/uapi/linux/icmp.h
+# https://www.cymru.com/Documents/ip_icmp.h
 
 
 ICMP_TYPES = {
@@ -173,32 +177,33 @@ class ICMPPacket(Packet):
 class ICMPProtocol:
 
     __packet__ = ICMPPacket
-    __connection__ = L2
+    __connection__ = RawConnection
 
     def __init__(self, options=()):
         self.options = options + ICMPProtocol.make_options()
 
     @classmethod
     async def echo_request(cls, host: str, count: int):
-        host, port = await resolve_address(
-            asyncio.get_running_loop(), socket.SOCK_RAW)(host)
+        dst_address = await resolve_address(
+            socket_type=socket.SOCK_RAW,
+        )(Address(host=host))
 
         _connection = cls.__connection__(
-            host=host,
-            port=1,
+            address=dst_address,
             family=socket.AF_INET,
             proto=socket.IPPROTO_ICMP,
-            package=cls.__packet__,
+            package_builder=cls.__packet__,
         )
 
         async with _connection as connection:
             for seq in range(1, count + 1):
                 result = await connection.send(cls.__packet__().build(seq=seq))
 
-                ip = IP.from_buffer(result)
-                icmp = ICMP.from_buffer(result, ip.packet_length)
+                if result:
+                    ip = IP.from_buffer(result)
+                    icmp = ICMP.from_buffer(result, ip.packet_length)
 
-                print(f'from {ip.src} icmp_seq={icmp.seq} ttl={ip.ttl}')
+                    print(f'from {ip.src} icmp_seq={icmp.seq} ttl={ip.ttl}')
 
     async def raw(self, packet: ICMPPacket):
         pass
