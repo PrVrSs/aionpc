@@ -22,7 +22,7 @@ def int_to_bytes(number, size, *, notation='big'):
     return number.to_bytes(size, notation)
 
 
-def resolve_address(
+def resolve_host(
         family: int = 0,
         socket_type: int = 0,
         proto: int = 0,

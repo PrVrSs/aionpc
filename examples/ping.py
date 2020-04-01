@@ -1,16 +1,28 @@
 import asyncio
 
-from aionpc.protocols.icmp import ICMPProtocol
+from aionpc.protocols import EchoRequestPrinter, ICMP
+
+
+async def do_request(host):
+    printer = EchoRequestPrinter()
+
+    async for response in ICMP().echo_request(host=host, count=3):
+        printer(response)
+
+    return printer
 
 
 async def main():
     tasks = [
-        ICMPProtocol.echo_request(host='google.com', count=3),
-        ICMPProtocol.echo_request(host='twitch.tv', count=3),
-        ICMPProtocol.echo_request(host='ya.ru', count=3),
+        do_request(host='google.com'),
+        do_request(host='twitch.tv'),
+        do_request(host='ya.ru'),
     ]
 
-    await asyncio.gather(*tasks)
+    printers = await asyncio.gather(*tasks)
+
+    for printer in printers:
+        printer.stats()
 
 
 if __name__ == '__main__':

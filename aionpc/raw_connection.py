@@ -1,4 +1,3 @@
-import abc
 import asyncio
 import socket
 import logging
@@ -8,20 +7,6 @@ from .struct import Address
 from ._packet_headers_tmp import IP, ICMP
 
 
-class IRawConnection(metaclass=abc.ABCMeta):
-
-    @staticmethod
-    @abc.abstractmethod
-    def _create_socket(family: int, proto: int): ...
-
-
-class BaseRawConnection(IRawConnection):
-    @staticmethod
-    def _create_socket(family: int, proto: int):
-        raise NotImplementedError
-
-
-# TODO: сделать реализацию Result<,>
 class RawProtocol(asyncio.Protocol):
     def __init__(
             self,
@@ -55,14 +40,14 @@ class RawProtocol(asyncio.Protocol):
         if self._promise is not None:
             self._promise.cancel()
 
-    def _send(self, package):
+    def _send(self, packet):
         self._promise = self._loop.create_future()
-        self._identifier = package.identifier
-        self._socket.sendto(package.data, self._dst_address)
+        self._identifier = packet.identifier
+        self._socket.sendto(packet.data, self._dst_address)
 
         return asyncio.shield(self._promise)
 
-    async def send(self, packet) -> bytes:
+    async def send(self, packet):
         try:
             try:
                 return await asyncio.wait_for(
