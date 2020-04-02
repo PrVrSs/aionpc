@@ -12,7 +12,7 @@ class MediaLayer:
         'ICMP',
     ))
 
-    async def create_connection(self, host, port, package_builder):
+    async def create_connection(self, host, port, protocol_behavior):
         dst_address = await resolve_host(
             socket_type=socket.SOCK_RAW,
         )(Address(host=host, port=port))
@@ -21,5 +21,5 @@ class MediaLayer:
             address=dst_address,
             family=socket.AF_INET,
             proto=socket.IPPROTO_ICMP,
-            package_builder=package_builder,
+            protocol_behavior=protocol_behavior,
         )

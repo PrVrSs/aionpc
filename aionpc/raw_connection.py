@@ -1,67 +1,44 @@
 import asyncio
 import socket
-import logging
 from functools import partial
 
 from .struct import Address
-from ._packet_headers_tmp import IP, ICMP
+from .protocol_behavior import ProtocolBehavior
 
 
 class RawProtocol(asyncio.Protocol):
     def __init__(
             self,
-            loop: asyncio.AbstractEventLoop,
             pysocket: socket,
             address: Address,
-            package_builder,
-            timeout: int,
+            protocol_behavior: ProtocolBehavior,
     ):
-        self._loop = loop
         self._socket = pysocket
-        self._package_builder = package_builder
         self._dst_address = address
-        self._timeout = timeout
+        self._protocol_behavior = protocol_behavior
 
-        self._promise = None
         self._transport = None
-        self._identifier = None
 
     def connection_made(self, transport):
         self._transport = transport
 
     def data_received(self, data: bytes):
-        ip = IP.from_buffer(data)
-        icmp = ICMP.from_buffer(data, ip.packet_length)
-
-        if self._identifier == icmp.id and icmp.type != 8:
-            self._promise.set_result(data)
+        self._protocol_behavior.response(data)
 
     def connection_lost(self, exc):
-        if self._promise is not None:
-            self._promise.cancel()
+        self._protocol_behavior.cancel()
 
     def _send(self, packet):
-        self._promise = self._loop.create_future()
-        self._identifier = packet.identifier
         self._socket.sendto(packet.data, self._dst_address)
+        return self._protocol_behavior.complete_condition()
 
-        return asyncio.shield(self._promise)
-
-    async def send(self, packet):
+    async def request(self, packet):
         try:
-            try:
-                return await asyncio.wait_for(
-                    self._send(packet), self._timeout)
-            except asyncio.TimeoutError:
-                logging.debug('timed out')
-
+            return await self._protocol_behavior.request(self._send, packet)
         except asyncio.CancelledError:
             raise
-
-        except Exception as e:
-            logging.exception(e)
-
-        return b''
+        except Exception:
+            raise
 
 
 class RawConnection:
@@ -70,7 +47,7 @@ class RawConnection:
             address: Address,
             family: int,
             proto: int,
-            package_builder,
+            protocol_behavior: ProtocolBehavior,
             *,
             loop=None
     ):
@@ -83,11 +60,9 @@ class RawConnection:
 
         protocol_factory = partial(
             RawProtocol,
-            loop=self._loop,
             pysocket=self._pipe,
             address=address,
-            package_builder=package_builder,
-            timeout=2,
+            protocol_behavior=protocol_behavior,
         )
 
         self._create_connection = partial(

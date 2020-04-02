@@ -1,3 +1,4 @@
+import asyncio
 import socket
 import struct
 import time
@@ -5,11 +6,12 @@ import uuid
 from ctypes import c_ubyte, c_ushort, c_char
 from typing import final
 
+from ..packet_headers_tmp import IP, ICMP
 from ...layer import MediaLayer
 from ...packet import Packet
+from ...protocol_behavior import ProtocolBehavior
 from ...scheme import ProtocolScheme
 from ...utils import struct_to_bytes
-from ..._packet_headers_tmp import IP, ICMP
 
 
 @final
@@ -94,22 +96,58 @@ class ICMPPacket(Packet):
         return self
 
 
+class ICMPBehavior(ProtocolBehavior):
+    def __init__(self, loop=None):
+        self._loop = loop or asyncio.get_running_loop()
+        self._time = None
+        self._promise = None
+        self._identifier = None
+        self._timeout = 2
+
+    async def request(self, send, packet):
+        self._promise = self._loop.create_future()
+        self._identifier = packet.identifier
+
+        try:
+            response = await asyncio.wait_for(send(packet), self._timeout)
+        except asyncio.TimeoutError:
+            response = b''
+
+        return response
+
+    def response(self, data: bytes) -> None:
+        ip = IP.from_buffer(data)
+        icmp = ICMP.from_buffer(data, ip.packet_length)
+
+        if self._identifier == icmp.id and icmp.type != 8:
+            self._promise.set_result(data)
+
+    def cancel(self):
+        if self._promise is not None:
+            self._promise.cancel()
+
+    def complete_condition(self):
+        return asyncio.shield(self._promise)
+
+
 @final
 class ICMPProtocol:
 
     __packet__ = ICMPPacket
     __layer__ = MediaLayer
+    __behavior__ = ICMPBehavior
 
     def __init__(self, options=()):
         self.options = options + ICMPProtocol.make_options()
 
     async def echo_request(self, host: str, count: int):
         _connection = await self.__layer__().create_connection(
-            host=host, port=0, package_builder=self.__packet__)
+            host=host, port=0, protocol_behavior=self.__behavior__())
 
         async with _connection as connection:
             for seq in range(count):
-                yield await connection.send(self.__packet__().build(seq=seq + 1))
+                yield await connection.request(
+                    self.__packet__().build(seq=seq + 1))
 
     async def raw(self, packet: ICMPPacket):
         pass
