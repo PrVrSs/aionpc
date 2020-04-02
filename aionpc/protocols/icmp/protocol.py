@@ -1,133 +1,10 @@
-import asyncio
-import socket
-import struct
-import time
-import uuid
-from ctypes import c_ubyte, c_ushort, c_char
 from typing import final
 
+from .behavior import ICMPBehavior
+from .packet import ICMPPacket
+from .constants import ICMPTypes
 from ..packet_headers_tmp import IP, ICMP
 from ...layer import MediaLayer
-from ...packet import Packet
-from ...protocol_behavior import ProtocolBehavior
-from ...scheme import ProtocolScheme
-from ...utils import struct_to_bytes
-
-
-@final
-class ICMPScheme(ProtocolScheme):
-    type: c_ubyte
-    code: c_ubyte
-    checksum: c_ushort
-    identifier: c_ushort
-    seq: c_ushort
-
-
-@final
-class ICMPPacket(Packet):
-
-    __scheme__ = ICMPScheme
-    _header = None
-    _payload = None
-
-    @property
-    def identifier(self):
-        return self._header.identifier
-
-    @property
-    def header(self):
-        return struct_to_bytes(self._header)
-
-    @property
-    def payload(self):
-        return struct_to_bytes(self._payload)
-
-    @property
-    def data(self):
-        return self.header + self.payload
-
-    @staticmethod
-    def _create_id() -> int:
-        return uuid.uuid4().int & 0xFFFF
-
-    @staticmethod
-    def checksum(buffer):
-        sum_ = 0
-        count_to = (len(buffer) / 2) * 2
-        count = 0
-
-        while count < count_to:
-            this_val = buffer[count + 1] * 256 + buffer[count]
-            sum_ += this_val
-            sum_ &= 0xffffffff
-            count += 2
-
-        if count_to < len(buffer):
-            sum_ += buffer[len(buffer) - 1]
-            sum_ &= 0xffffffff
-
-        sum_ = (sum_ >> 16) + (sum_ & 0xffff)
-        sum_ += sum_ >> 16
-        answer = ~sum_
-        answer &= 0xffff
-
-        answer = answer >> 8 | (answer << 8 & 0xff00)
-
-        return answer
-
-    def build(self, seq: int):
-        _checksum = 0
-
-        _id = self._create_id()
-
-        header = struct.pack('BbHHh', 8, 0, _checksum, _id, seq)
-        bytes_in_double = struct.calcsize('d')
-
-        data = (192 - bytes_in_double) * 'A'
-        data = struct.pack('d', time.time()) + data.encode('utf-8')
-
-        _checksum = self.checksum(header + data)
-
-        header = struct.pack('BbHHh', 8, 0, socket.htons(_checksum), _id, seq)
-
-        self._header = self.__scheme__.from_buffer_copy(header)
-        self._payload = (c_char * len(data)).from_buffer_copy(data)
-
-        return self
-
-
-class ICMPBehavior(ProtocolBehavior):
-    def __init__(self, loop=None):
-        self._loop = loop or asyncio.get_running_loop()
-        self._time = None
-        self._promise = None
-        self._identifier = None
-        self._timeout = 2
-
-    async def request(self, send, packet):
-        self._promise = self._loop.create_future()
-        self._identifier = packet.identifier
-
-        try:
-            response = await asyncio.wait_for(send(packet), self._timeout)
-        except asyncio.TimeoutError:
-            response = b''
-
-        return response
-
-    def response(self, data: bytes) -> None:
-        ip = IP.from_buffer(data)
-        icmp = ICMP.from_buffer(data, ip.packet_length)
-
-        if self._identifier == icmp.id and icmp.type != 8:
-            self._promise.set_result(data)
-
-    def cancel(self):
-        if self._promise is not None:
-            self._promise.cancel()
-
-    def complete_condition(self):
-        return asyncio.shield(self._promise)
 
 
 @final
@@ -142,12 +19,20 @@ class ICMPProtocol:
 
     async def echo_request(self, host: str, count: int):
         _connection = await self.__layer__().create_connection(
-            host=host, port=0, protocol_behavior=self.__behavior__())
+            host=host,
+            port=0,
+            protocol_behavior=self.__behavior__(timeout=2)
+        )
 
         async with _connection as connection:
             for seq in range(count):
                 yield await connection.request(
-                    self.__packet__().build(seq=seq + 1))
+                    self.__packet__().build(
+                        seq=seq + 1,
+                        proto=ICMPTypes.EchoRequest,
+                        code=0,
+                    )
+                )
 
     async def raw(self, packet: ICMPPacket):
         pass
