@@ -9,13 +9,15 @@
 ```python3
 import asyncio
 
-from aionpc.protocols import EchoRequestPrinter, ICMP
+from aionpc import Client
+from aionpc.protocols import EchoRequestPrinter
 
 
 async def do_request(host):
-    printer = EchoRequestPrinter()
+    printer = EchoRequestPrinter(host=host)
+    protocol = Client.protocol_by_name(name='icmp')
 
-    async for response in ICMP().echo_request(host=host, count=3):
+    async for response in protocol().echo_request(host=host, count=3):
         printer(response)
 
     return printer
@@ -35,5 +37,5 @@ async def main():
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    asyncio.run(main(), debug=True)
 ```

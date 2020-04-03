@@ -1,6 +1,9 @@
 from enum import IntEnum, auto
 
 
+PROTOCOL_NAME = 'ICMP'
+
+
 class ICMPTypes(IntEnum):
     EchoReply = 0
     DestUnreach = 3

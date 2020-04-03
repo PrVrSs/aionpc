@@ -1,25 +1,25 @@
-import math
 from operator import itemgetter
 from statistics import mean
 from typing import final
 
 from .behavior import ICMPBehavior
-from .constants import ICMPTypes
+from .constants import ICMPTypes, PROTOCOL_NAME
 from .packet import ICMPPacket
+from ..common import mdev
 from ..packet_headers_tmp import IP, ICMP
-from ..utils import mdev
 from ...layer import MediaLayer
+from ...client import Protocols
 
 
 @final
-class ICMPProtocol:
+class Protocol(Protocols, name=PROTOCOL_NAME):
 
     __packet__ = ICMPPacket
     __layer__ = MediaLayer
     __behavior__ = ICMPBehavior
 
     def __init__(self, options=()):
-        self.options = options + ICMPProtocol.make_options()
+        self.options = options + Protocol.make_options()
 
     async def echo_request(self, host: str, count: int):
         _connection = await self.__layer__().create_connection(

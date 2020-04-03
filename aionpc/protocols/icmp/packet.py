@@ -5,7 +5,7 @@ import uuid
 from ctypes import c_ubyte, c_ushort, c_char
 from typing import final
 
-from ..utils import checksum
+from ..common import checksum
 from ...packet import Packet
 from ...scheme import ProtocolScheme
 from ...utils import struct_to_bytes
