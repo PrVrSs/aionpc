@@ -1,9 +1,13 @@
+import math
+from operator import itemgetter
+from statistics import mean
 from typing import final
 
 from .behavior import ICMPBehavior
-from .packet import ICMPPacket
 from .constants import ICMPTypes
+from .packet import ICMPPacket
 from ..packet_headers_tmp import IP, ICMP
+from ..utils import mdev
 from ...layer import MediaLayer
 
 
@@ -19,9 +23,8 @@ class ICMPProtocol:
 
     async def echo_request(self, host: str, count: int):
         _connection = await self.__layer__().create_connection(
+            protocol_behavior=self.__behavior__(timeout=2),
             host=host,
-            port=0,
-            protocol_behavior=self.__behavior__(timeout=2)
         )
 
         async with _connection as connection:
@@ -51,37 +54,43 @@ class EchoRequestPrinter:
     __stats_tpl__ = (
         '\n--- {host} ping statistics ---\n'
         '{count} packets transmitted, {rec} received, '
-        '{lost}% packet loss, time 4001ms\n'
-        'rtt min/avg/max/mdev = 54.745/56.539/58.894/1.601 ms'
+        '{lost}% packet loss, time {time}ms\n'
+        'rtt min/avg/max/mdev = {min}/{avg}/{max}/{mdev} ms'
     ).format
 
-    def __init__(self, show=True):
-        self.show = show
-        self.packets = []
+    def __init__(self, host: str):
+        self._host = host
+        self._packets = []
 
     def __call__(self, packet):
-        self.packets.append(packet)
+        _packet, _time = packet
 
-        if self.show:
-            ip = IP.from_buffer(packet)
-            icmp = ICMP.from_buffer(packet, ip.packet_length)
+        self._packets.append(packet)
 
-            print(
-                self.__line_tpl__(
-                    bytes=len(packet),
-                    host=ip.src,
-                    seq=icmp.seq,
-                    ttl=ip.ttl,
-                    time=45
-                )
+        ip = IP.from_buffer(_packet)
+        icmp = ICMP.from_buffer(_packet, ip.packet_length)
+
+        print(
+            self.__line_tpl__(
+                bytes=len(_packet),
+                host=ip.src,
+                seq=icmp.seq,
+                ttl=ip.ttl,
+                time=_time
             )
+        )
 
     def stats(self):
-        if self.show:
-            print(
-                self.__stats_tpl__(
-                    host='123',
-                    count=len(self.packets),
-                    rec=len(self.packets),
-                    lost=0,
-                ))
+        print(
+            self.__stats_tpl__(
+                host=self._host,
+                count=len(self._packets),
+                rec=len(self._packets),
+                lost=0,
+                time=round(sum(_time for _, _time in self._packets)),  # TODO: include delay time
+                min=min(self._packets, key=itemgetter(1))[1],
+                max=max(self._packets, key=itemgetter(1))[1],
+                avg=round(mean([_time for _, _time in self._packets]), 1),
+                mdev=round(mdev([_time for _, _time in self._packets]), 3),
+            )
+        )

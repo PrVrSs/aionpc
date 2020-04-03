@@ -4,7 +4,7 @@ from aionpc.protocols import EchoRequestPrinter, ICMP
 
 
 async def do_request(host):
-    printer = EchoRequestPrinter()
+    printer = EchoRequestPrinter(host=host)
 
     async for response in ICMP().echo_request(host=host, count=3):
         printer(response)

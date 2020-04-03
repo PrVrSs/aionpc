@@ -5,7 +5,7 @@ class ICMPTypes(IntEnum):
     EchoReply = 0
     DestUnreach = 3
     SourceQuench = 4
-    redirect = 5
+    Redirect = 5
     EchoRequest = 8
     RouterAdvertisement = 9
     RouterSolicitation = 10

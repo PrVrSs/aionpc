@@ -1,18 +1,25 @@
 import socket
+from typing import ClassVar, FrozenSet, Type
 
 from .raw_connection import RawConnection
 from .struct import Address
 from .utils import resolve_host
+from .protocol_behavior import ProtocolBehavior
 
 
 class MediaLayer:
 
-    __connection__ = RawConnection
-    __protocols__ = frozenset((
+    __connection__: ClassVar[Type[RawConnection]] = RawConnection
+    __protocols__: ClassVar[FrozenSet[str]] = frozenset((
         'ICMP',
     ))
 
-    async def create_connection(self, host, port, protocol_behavior):
+    async def create_connection(
+            self,
+            protocol_behavior: ProtocolBehavior,
+            host: str,
+            port: int = 0
+    ) -> RawConnection:
         dst_address = await resolve_host(
             socket_type=socket.SOCK_RAW,
         )(Address(host=host, port=port))

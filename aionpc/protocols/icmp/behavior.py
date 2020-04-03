@@ -33,7 +33,8 @@ class ICMPBehavior(ProtocolBehavior):
         icmp = ICMP.from_buffer(data, ip.packet_length)
 
         if self._identifier == icmp.id and icmp.type != 8:
-            self._promise.set_result(data)
+            _time = round((time.time() - self._time) * 1000, 1)
+            self._promise.set_result((data, _time))
 
     def cancel(self):
         if self._promise is not None:
