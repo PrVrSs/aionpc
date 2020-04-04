@@ -2,7 +2,7 @@ import socket
 import struct
 import time
 import uuid
-from ctypes import c_ubyte, c_ushort, c_char
+from ctypes import c_ubyte, c_ushort, c_char, Structure, Array
 from typing import final
 
 from ..common import checksum
@@ -24,8 +24,8 @@ class ICMPScheme(ProtocolScheme):
 class ICMPPacket(Packet):
 
     __scheme__ = ICMPScheme
-    _header = None
-    _payload = None
+    _header: Structure = None
+    _payload: Array = None
 
     @property
     def identifier(self):
@@ -48,16 +48,16 @@ class ICMPPacket(Packet):
         return uuid.uuid4().int & 0xFFFF
 
     @staticmethod
-    def _generate_payload(size: int = 28):
+    def _generate_payload(size: int) -> bytes:
         return struct.pack('d', time.time()) + ('A' * size).encode('utf-8')
 
-    def build(self, seq: int, proto: int, code: int, size: int = 0):
+    def build(self, seq: int, proto: int, code: int, size: int = 28):
         _checksum = 0
         _id = self._create_id()
 
         header = struct.pack('BbHHh', proto, code, _checksum, _id, seq)
 
-        _payload = self._generate_payload()
+        _payload = self._generate_payload(size=size)
         _checksum = checksum(header + _payload)
 
         header = struct.pack(

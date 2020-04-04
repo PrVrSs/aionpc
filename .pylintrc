@@ -1,0 +1,21 @@
+[MESSAGES CONTROL]
+
+# Disable the message, report, category or checker with the given id(s).
+disable=
+    abstract-method,
+    access-member-before-definition,
+    bad-mcs-classmethod-argument,
+    empty-docstring,
+    inconsistent-return-statements,
+    missing-docstring,
+    no-else-return,
+    no-member,
+    no-value-for-parameter,
+    too-few-public-methods,
+
+
+[BASIC]
+
+# Good variable names which should always be accepted, separated by a comma.
+good-names=
+    ip,

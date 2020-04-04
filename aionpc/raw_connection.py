@@ -9,7 +9,7 @@ from .protocol_behavior import ProtocolBehavior
 class RawProtocol(asyncio.Protocol):
     def __init__(
             self,
-            pysocket: socket,
+            pysocket: socket.socket,
             address: Address,
             protocol_behavior: ProtocolBehavior,
     ):
@@ -72,7 +72,7 @@ class RawConnection:
         )
 
     @staticmethod
-    def _create_pipe(family: int, proto: int) -> socket:
+    def _create_pipe(family: int, proto: int) -> socket.socket:
         return socket.socket(
             family=family,
             type=socket.SOCK_RAW | socket.SOCK_NONBLOCK,

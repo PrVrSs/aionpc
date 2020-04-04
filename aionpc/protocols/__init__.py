@@ -1,1 +1,1 @@
-from .icmp import Protocol as ICMP, EchoRequestPrinter
+from .icmp import ICMP

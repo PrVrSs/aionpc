@@ -1,24 +1,28 @@
 import asyncio
+import ctypes
 from ctypes import memmove, addressof, sizeof, create_string_buffer
 from operator import itemgetter
-from typing import Awaitable, Callable, Optional
+from typing import Awaitable, Callable, Optional, Union
 
 from more_itertools.recipes import first_true
 
 from .struct import Address
 
 
-def bytes_to_structure(st, byte):
-    memmove(addressof(st), byte, sizeof(st))
+_Structure = Union[ctypes.Array, ctypes.Structure]
 
 
-def struct_to_bytes(st):
-    buffer = create_string_buffer(sizeof(st))
-    memmove(buffer, addressof(st), sizeof(st))
+def bytes_to_structure(struct: _Structure, byte: bytes) -> None:
+    memmove(addressof(struct), byte, sizeof(struct))
+
+
+def struct_to_bytes(struct: _Structure) -> bytes:
+    buffer = create_string_buffer(sizeof(struct))
+    memmove(buffer, addressof(struct), sizeof(struct))
     return buffer.raw
 
 
-def int_to_bytes(number, size, *, notation='big'):
+def int_to_bytes(number: int, size: int, *, notation: str = 'big') -> bytes:
     return number.to_bytes(size, notation)
 
 
@@ -26,7 +30,7 @@ def resolve_host(
         family: int = 0,
         socket_type: int = 0,
         proto: int = 0,
-        flags: int = 0
+        flags: int = 0,
 ) -> Callable[[Address], Awaitable[Optional[Address]]]:
     sock_type_getter = itemgetter(1)
     dst_address_getter = itemgetter(4)

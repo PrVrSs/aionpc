@@ -10,7 +10,8 @@ class PacketBase(metaclass=PacketMeta):
     __scheme__ = None
 
     @abc.abstractmethod
-    def build(self, seq: int, proto: int, code: int): ...
+    def build(self, seq: int, proto: int, code: int):
+        ...
 
 
 class Packet(PacketBase):

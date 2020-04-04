@@ -1,17 +1,15 @@
 import asyncio
 
 from aionpc import Client
-from aionpc.protocols import EchoRequestPrinter
 
 
 async def do_request(host):
-    printer = EchoRequestPrinter(host=host)
-    protocol = Client.protocol_by_name(name='icmp')
+    icmp = Client.protocol_by_name(name='icmp')(host=host)
 
-    async for response in protocol().echo_request(host=host, count=3):
-        printer(response)
+    async for response in icmp.protocol.echo_request(host=host, count=3):
+        icmp.printer(response)
 
-    return printer
+    return icmp
 
 
 async def main():
@@ -21,10 +19,10 @@ async def main():
         do_request(host='ya.ru'),
     ]
 
-    printers = await asyncio.gather(*tasks)
+    results = await asyncio.gather(*tasks)
 
-    for printer in printers:
-        printer.stats()
+    for proto in results:
+        proto.printer.stats()
 
 
 if __name__ == '__main__':
