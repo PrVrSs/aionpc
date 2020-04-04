@@ -8,4 +8,5 @@ class ICMP(BaseProtocol, name=PROTOCOL_NAME):
     def __init__(self, config):
         self.printer = EchoRequestPrinter(config.get('host'))
         self.protocol = Protocol(config.get('host'))
-        self._config = None
+
+        self._config = config

@@ -1,5 +1,7 @@
 import asyncio
 import ctypes
+import logging
+import socket
 from ctypes import memmove, addressof, sizeof, create_string_buffer
 from operator import itemgetter
 from typing import Awaitable, Callable, Optional, Union
@@ -36,12 +38,16 @@ def resolve_host(
     dst_address_getter = itemgetter(4)
 
     async def inner(address: Address) -> Optional[Address]:
-        info_all = await asyncio.get_running_loop().getaddrinfo(
-            *address,
-            family=family,
-            proto=proto,
-            flags=flags,
-        )
+        try:
+            info_all = await asyncio.get_running_loop().getaddrinfo(
+                *address,
+                family=family,
+                proto=proto,
+                flags=flags,
+            )
+        except socket.gaierror:
+            logging.error(' %s: Name or service not known', address.host)
+            raise
 
         info = first_true(
             iterable=info_all,
