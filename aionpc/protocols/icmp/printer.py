@@ -33,14 +33,14 @@ class EchoRequestPrinter:
         ip = IP.from_buffer(packet.data)
         icmp = ICMP.from_buffer(packet.data, ip.packet_length)
 
-        print(self._received_msg(ip, icmp, packet.time))
+        print(self._received_msg(ip, icmp, packet.time, len(packet.data)))
 
     def stats(self):
         print(self._stats_msg())
 
-    def _received_msg(self, ip, icmp, _time):
+    def _received_msg(self, ip, icmp, _time, usize):
         return self.__received_tpl__(
-                bytes=len(ip) + len(icmp),
+                bytes=usize,
                 host=ip.src,
                 seq=icmp.seq,
                 ttl=ip.ttl,
