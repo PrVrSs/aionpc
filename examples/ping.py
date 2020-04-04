@@ -4,9 +4,9 @@ from aionpc import Client
 
 
 async def do_request(host):
-    icmp = Client.protocol_by_name(name='icmp')(host=host)
+    icmp = Client.protocol_by_name(name='icmp')(config={'host': host})
 
-    async for response in icmp.protocol.echo_request(host=host, count=3):
+    async for response in icmp.protocol.echo_request(count=3):
         icmp.printer(response)
 
     return icmp

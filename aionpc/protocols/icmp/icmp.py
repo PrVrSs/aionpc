@@ -5,7 +5,7 @@ from ...protocol import BaseProtocol
 
 
 class ICMP(BaseProtocol, name=PROTOCOL_NAME):
-    def __init__(self, host):
-        self.printer = EchoRequestPrinter(host=host)
-        self.protocol = Protocol()
+    def __init__(self, config):
+        self.printer = EchoRequestPrinter(config.get('host'))
+        self.protocol = Protocol(config.get('host'))
         self._config = None

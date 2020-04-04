@@ -1,4 +1,4 @@
-from operator import itemgetter
+from operator import attrgetter
 from statistics import mean
 
 from ..common import mdev
@@ -7,7 +7,7 @@ from ..packet_headers_tmp import IP, ICMP
 
 class EchoRequestPrinter:
 
-    __line_tpl__ = (
+    __received_tpl__ = (
         '{bytes} bytes from {host}: icmp_seq={seq} ttl={ttl} time={time} ms'
     ).format
 
@@ -20,37 +20,51 @@ class EchoRequestPrinter:
 
     def __init__(self, host: str):
         self._host = host
-        self._packets = []
+        self._loss_packets = set()
+        self._received_packets = set()
 
     def __call__(self, packet):
-        _packet, _time = packet
+        if not packet.data:
+            self._loss_packets.add(packet)
+            return
 
-        self._packets.append(packet)
+        self._received_packets.add(packet)
 
-        ip = IP.from_buffer(_packet)
-        icmp = ICMP.from_buffer(_packet, ip.packet_length)
+        ip = IP.from_buffer(packet.data)
+        icmp = ICMP.from_buffer(packet.data, ip.packet_length)
 
-        print(
-            self.__line_tpl__(
-                bytes=len(_packet),
+        print(self._received_msg(ip, icmp, packet.time))
+
+    def stats(self):
+        print(self._stats_msg())
+
+    def _received_msg(self, ip, icmp, _time):
+        return self.__received_tpl__(
+                bytes=len(ip) + len(icmp),
                 host=ip.src,
                 seq=icmp.seq,
                 ttl=ip.ttl,
-                time=_time
+                time=_time,
             )
+
+    def _stats_msg(self):
+        return self.__stats_tpl__(
+            host=self._host,
+            count=len(self._loss_packets) + len(self._received_packets),
+            rec=len(self._received_packets),
+            lost=self._calc_loss(),
+            time=round(sum(packet.time for packet in self._received_packets)),
+            min=min(self._received_packets, key=attrgetter('time')).time,
+            max=max(self._received_packets, key=attrgetter('time')).time,
+            avg=round(
+                mean([packet.time for packet in self._received_packets]), 1),
+            mdev=round(
+                mdev([packet.time for packet in self._received_packets]), 3),
         )
 
-    def stats(self):
-        print(
-            self.__stats_tpl__(
-                host=self._host,
-                count=len(self._packets),
-                rec=len(self._packets),
-                lost=0,
-                time=round(sum(_time for _, _time in self._packets)),  # TODO: include delay time
-                min=min(self._packets, key=itemgetter(1))[1],
-                max=max(self._packets, key=itemgetter(1))[1],
-                avg=round(mean([_time for _, _time in self._packets]), 1),
-                mdev=round(mdev([_time for _, _time in self._packets]), 3),
-            )
+    def _calc_loss(self):
+        return round(
+            len(self._loss_packets) * 100
+            /
+            (len(self._loss_packets) + len(self._received_packets))
         )

@@ -1,14 +1,23 @@
 import asyncio
 import time
-from typing import final
+from asyncio import AbstractEventLoop
+from typing import final, Optional
+
+import attr
 
 from ..packet_headers_tmp import IP, ICMP
 from ...protocol_behavior import ProtocolBehavior
 
 
+@attr.s(frozen=True, slots=True)
+class ICMPResponse:
+    time = attr.ib()
+    data = attr.ib()
+
+
 @final
 class ICMPBehavior(ProtocolBehavior):
-    def __init__(self, timeout, loop=None):
+    def __init__(self, timeout: int, loop: Optional[AbstractEventLoop] = None):
         self._loop = loop or asyncio.get_running_loop()
         self._timeout = timeout
 
@@ -22,11 +31,11 @@ class ICMPBehavior(ProtocolBehavior):
         self._time = time.time()
 
         try:
-            response = await asyncio.wait_for(send(packet), self._timeout)
+            data, _time = await asyncio.wait_for(send(packet), self._timeout)
         except asyncio.TimeoutError:
-            response = b''
+            data, _time = b'', self._timeout
 
-        return response
+        return ICMPResponse(time=_time, data=data)
 
     def response(self, data: bytes) -> None:
         ip = IP.from_buffer(data)

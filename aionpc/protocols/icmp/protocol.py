@@ -13,10 +13,13 @@ class Protocol:
     __layer__ = MediaLayer
     __behavior__ = ICMPBehavior
 
-    async def echo_request(self, host: str, count: int):
+    def __init__(self, host):
+        self._host = host
+
+    async def echo_request(self, count: int):
         _connection = await self.__layer__().create_connection(
             protocol_behavior=self.__behavior__(timeout=2),
-            host=host,
+            host=self._host,
         )
 
         async with _connection as connection:

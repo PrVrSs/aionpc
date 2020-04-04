@@ -9,6 +9,7 @@ license = "Apache-2.0"
 python = "^3.8"
 click = "^7.1.1"
 more_itertools = "^8.2.0"
+attrs = "^19.3.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.4.1"
