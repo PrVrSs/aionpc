@@ -1,8 +1,11 @@
+import socket
+import struct
+from ctypes import sizeof
 from operator import attrgetter
 from statistics import mean
 
 from ..common import mdev
-from ..packet_headers_tmp import IP, ICMP
+from ..headers import IPHeader, ICMPHeader
 
 
 class EchoRequestPrinter:
@@ -33,10 +36,15 @@ class EchoRequestPrinter:
 
         self._received_packets.add(packet)
 
-        ip = IP.from_buffer(packet.data)
-        icmp = ICMP.from_buffer(packet.data, ip.packet_length)
+        ip_header = IPHeader.from_buffer_copy(packet.data)
+        icmp_header = ICMPHeader.from_buffer_copy(packet.data[sizeof(IPHeader):])
 
-        print(self._received_msg(ip, icmp, packet.time, len(packet.data)))
+        print(self._received_msg(
+            ip_header,
+            icmp_header,
+            packet.time,
+            len(packet.data),
+        ))
 
     def stats(self):
         msg = self._stats_header_msg() + self._stats_body_msg()
@@ -49,7 +57,7 @@ class EchoRequestPrinter:
     def _received_msg(self, ip, icmp, _time, usize) -> str:
         return self.__received_tpl__(
                 bytes=usize,
-                host=ip.src,
+                host=socket.inet_ntoa(struct.pack('<L', ip.src)),
                 seq=icmp.seq,
                 ttl=ip.ttl,
                 time=_time,

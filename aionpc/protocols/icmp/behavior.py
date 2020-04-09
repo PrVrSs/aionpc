@@ -1,11 +1,12 @@
 import asyncio
 import time
 from asyncio import AbstractEventLoop
+from ctypes import sizeof
 from typing import final, Optional
 
 import attr
 
-from ..packet_headers_tmp import IP, ICMP
+from ..headers import IPHeader, ICMPHeader
 from ...protocol_behavior import ProtocolBehavior
 
 
@@ -48,10 +49,9 @@ class ICMPBehavior(ProtocolBehavior):
         return ICMPResponse(time=_time, data=data, delay=self._delay * 1000)
 
     def response(self, data: bytes) -> None:
-        ip = IP.from_buffer(data)
-        icmp = ICMP.from_buffer(data, ip.packet_length)
+        icmp_header = ICMPHeader.from_buffer_copy(data[sizeof(IPHeader):])
 
-        if self._identifier == icmp.id and icmp.type != 8:
+        if self._identifier == icmp_header.identifier and icmp_header.type != 8:
             _time = round((time.time() - self._time) * 1000, 1)
             self._promise.set_result((data, _time))
 
