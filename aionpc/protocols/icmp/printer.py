@@ -1,6 +1,6 @@
-import socket
 import struct
 from ctypes import sizeof
+from ipaddress import ip_address
 from operator import attrgetter
 from statistics import mean
 
@@ -57,7 +57,7 @@ class EchoRequestPrinter:
     def _received_msg(self, ip, icmp, _time, usize) -> str:
         return self.__received_tpl__(
                 bytes=usize,
-                host=socket.inet_ntoa(struct.pack('<L', ip.src)),
+                host=ip_address(struct.pack('<L', ip.src)),
                 seq=icmp.seq,
                 ttl=ip.ttl,
                 time=_time,
